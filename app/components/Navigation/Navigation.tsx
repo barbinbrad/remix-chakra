@@ -32,7 +32,7 @@ import { BsCalendar3, BsChatDots, BsBook } from "react-icons/bs";
 import { FaGraduationCap, FaUserFriends } from "react-icons/fa";
 import { ImHome3 } from "react-icons/im";
 import { MdBrightnessLow, MdOutlineBrightness2 } from "react-icons/md";
-import { Mode, useColorMode } from "~/theme";
+import { Mode, useColorMode } from "~/lib/theme";
 
 type Route = {
   to: string;
@@ -84,7 +84,7 @@ export default function Navigation() {
   }, [setColorMode, setChakraInternalColorMode]);
 
   return (
-    <chakra.header bg={bg} w="full" px={{ base: 2, sm: 4 }} py={4} shadow="md">
+    <chakra.header bg={bg} w="full" px={{ base: 2, sm: 4 }} py={3} shadow="md">
       <Flex alignItems="center" justifyContent="space-between" mx="auto">
         <HStack display="flex" spacing={3} alignItems="center">
           <chakra.a
@@ -141,7 +141,7 @@ export default function Navigation() {
                     w="full"
                     variant={routeMatches ? "solid" : "ghost"}
                     colorScheme={routeMatches ? "brand" : undefined}
-                    leftIcon={<AiOutlineInbox />}
+                    leftIcon={route.icon}
                   >
                     Messaging
                   </Button>
@@ -180,7 +180,6 @@ export default function Navigation() {
                 as="span"
                 role="button"
                 aria-label="Support"
-                size="lg"
                 icon={<BiSupport />}
               />
             </MenuButton>
@@ -195,7 +194,6 @@ export default function Navigation() {
             <IconButton
               aria-label="Toggle Dark Mode"
               onClick={toggleColorMode}
-              size="lg"
               icon={
                 colorMode !== Mode.Dark ? (
                   <MdOutlineBrightness2 />
@@ -208,7 +206,7 @@ export default function Navigation() {
 
           <Menu>
             <MenuButton>
-              <Avatar size="md" name="Brad Barbin" />
+              <Avatar size="sm" name="Brad Barbin" />
             </MenuButton>
             <MenuList>
               <MenuItem icon={<AiOutlineTeam />}>Change Account</MenuItem>

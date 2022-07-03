@@ -1,6 +1,6 @@
-import { Box, Heading } from "@chakra-ui/react";
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import { Flex, VStack } from "@chakra-ui/react";
+import { Flex, Heading, Text, VStack } from "@chakra-ui/react";
+import { withEmotionCache } from "@emotion/react";
+import type { LoaderFunction } from "@remix-run/node";
 import {
   Links,
   LiveReload,
@@ -11,10 +11,11 @@ import {
   useCatch,
   useLoaderData,
 } from "@remix-run/react";
+import { useContext, useEffect } from "react";
 import Navigation from "~/components/Navigation";
-import { ChakraThemeProvider } from "~/theme";
-import { Mode } from "~/theme";
-import { getColorModeSession } from "./theme/theme.server";
+import { ClientStyleContext, ServerStyleContext } from "~/lib/emotion/context";
+import { ChakraThemeProvider, Mode } from "~/lib/theme";
+import { getColorModeSession } from "~/lib/theme/theme.server";
 
 export type LoaderData = {
   mode: Mode | null;
@@ -30,85 +31,128 @@ export const loader: LoaderFunction = async ({ request }) => {
   return data;
 };
 
-export const meta: MetaFunction = () => ({
-  charset: "utf-8",
-  viewport: "width=device-width,initial-scale=1",
-});
-
-function Document({
-  children,
-  title = "App title",
-}: {
+interface DocumentProps {
   children: React.ReactNode;
-  title?: string;
-}) {
-  return (
-    <html lang="en">
-      <head>
-        <Meta />
-        <title>{title}</title>
-        <Links />
-      </head>
-      <body>
-        {children}
-        <ScrollRestoration />
-        <Scripts />
-        <LiveReload />
-      </body>
-    </html>
-  );
 }
 
+const Document = withEmotionCache(
+  ({ children }: DocumentProps, emotionCache) => {
+    const serverSyleData = useContext(ServerStyleContext);
+    const clientStyleData = useContext(ClientStyleContext);
+    const data = useLoaderData();
+
+    // Only executed on client
+    useEffect(() => {
+      // re-link sheet container
+      emotionCache.sheet.container = document.head;
+      // re-inject tags
+      const tags = emotionCache.sheet.tags;
+      emotionCache.sheet.flush();
+      tags.forEach((tag) => {
+        (emotionCache.sheet as any)._insertTag(tag);
+      });
+      // reset cache to reapply global styles
+      clientStyleData?.reset();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    return (
+      <html lang="en">
+        <head>
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+          <Meta />
+          <Links />
+          {serverSyleData?.map(({ key, ids, css }) => (
+            <style
+              key={key}
+              data-emotion={`${key} ${ids.join(" ")}`}
+              dangerouslySetInnerHTML={{ __html: css }}
+            />
+          ))}
+        </head>
+        <body>
+          <ChakraThemeProvider sessionColorMode={data?.mode || Mode.Light}>
+            {children}
+          </ChakraThemeProvider>
+          <ScrollRestoration />
+          <Scripts />
+          {process.env.NODE_ENV === "development" ? <LiveReload /> : null}
+        </body>
+      </html>
+    );
+  }
+);
+
 export default function App() {
-  const data = useLoaderData();
   const user = {};
 
   return (
     <Document>
-      <ChakraThemeProvider sessionColorMode={data.mode}>
-        <VStack h="100vh" w="100vw" spacing={0}>
-          {user && (
-            <Flex as="nav" w="full">
-              <Navigation />
-            </Flex>
-          )}
-          <Flex h="full">
-            <Outlet />
+      <VStack h="100vh" w="100vw" spacing={0}>
+        {user && (
+          <Flex as="nav" w="full">
+            <Navigation />
           </Flex>
-        </VStack>
-      </ChakraThemeProvider>
+        )}
+        <Flex w="full">
+          <Outlet />
+        </Flex>
+      </VStack>
     </Document>
   );
 }
 
-// How ChakraProvider should be used on CatchBoundary
-export function CatchBoundary() {
-  const caught = useCatch();
-
-  return (
-    <Document title={`${caught.status} ${caught.statusText}`}>
-      <ChakraThemeProvider sessionColorMode={Mode.Dark}>
-        <Box>
-          <Heading as="h1" bg="purple.600">
-            [CatchBoundary]: {caught.status} {caught.statusText}
-          </Heading>
-        </Box>
-      </ChakraThemeProvider>
-    </Document>
-  );
-}
-
-// How ChakraProvider should be used on ErrorBoundary
 export function ErrorBoundary({ error }: { error: Error }) {
+  console.error("Boundary:", error);
   return (
-    <Document title="Error!">
-      <ChakraThemeProvider sessionColorMode={Mode.Dark}>
-        <Box>
-          <Heading as="h1" bg="blue.500">
-            [ErrorBoundary]: There was an error: {error.message}
-          </Heading>
-        </Box>
-      </ChakraThemeProvider>
+    <Document>
+      <VStack h="100vh" justify="center">
+        <Heading>There was an error</Heading>
+        <Text>{error.message}</Text>
+        <hr />
+        <Text>
+          Hey, developer, you should replace this with what you want your users
+          to see.
+        </Text>
+      </VStack>
+    </Document>
+  );
+}
+
+export function CatchBoundary() {
+  let caught = useCatch();
+  let message;
+  switch (caught.status) {
+    case 401:
+      message = (
+        <Text>
+          Oops! Looks like you tried to visit a page that you do not have access
+          to.
+        </Text>
+      );
+      break;
+    case 404:
+      message = (
+        <Text>
+          Oops! Looks like you tried to visit a page that does not exist.
+        </Text>
+      );
+      break;
+
+    default:
+      throw new Error(caught.data || caught.statusText);
+  }
+
+  return (
+    <Document>
+      <VStack h="100vh" justify="center">
+        <Heading>
+          {caught.status}: {caught.statusText}
+        </Heading>
+        {message}
+      </VStack>
     </Document>
   );
 }
