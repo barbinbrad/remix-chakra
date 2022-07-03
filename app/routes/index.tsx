@@ -1,13 +1,10 @@
-import { Text } from "@chakra-ui/react";
-import { Outlet } from "@remix-run/react";
+import type { LoaderFunction } from "@remix-run/node";
+import { redirect } from "@remix-run/node";
 
-const Index = () => {
-  return (
-    <>
-      <Text>Home</Text>
-      <Outlet />
-    </>
-  );
+export const loader: LoaderFunction = async ({ request }) => {
+  const user = {}; // TODO
+  if (user) {
+    return redirect("home");
+  }
+  return redirect("sign-in");
 };
-
-export default Index;
