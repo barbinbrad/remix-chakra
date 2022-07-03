@@ -1,5 +1,5 @@
-import { json } from "@remix-run/node";
-import type { ActionFunction } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
+import type { ActionFunction, LoaderFunction } from "@remix-run/node";
 
 import { getColorModeSession } from "~/theme/theme.server";
 import { isColorMode } from "~/theme";
@@ -23,3 +23,5 @@ export const action: ActionFunction = async ({ request }) => {
     { headers: { "Set-Cookie": await colorModeSession.commit() } }
   );
 };
+
+export const loader: LoaderFunction = () => redirect("/", { status: 404 });
